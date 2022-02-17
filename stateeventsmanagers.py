@@ -3,7 +3,6 @@ from pynput.keyboard import Key, KeyCode
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, final
 from enum import Enum, auto
-from pprint import pformat
 
 from utils import State, Screen, save_words
 import strings
@@ -145,17 +144,19 @@ class Words(StateEventsManager):
 
     def give_word_prompt(self):
         next_word = self.fetched_words[self.words_index]
-        prompt = strings.word_decision_prompt(self) + '\n\n\t' + next_word
+        words_left = len(self.fetched_words) - self.words_index
+        prompt = strings.word_decision_prompt(self, words_left) + '\n\n\t' + next_word
         self.screen.replace(prompt)
         self.words_index += 1
 
     def handle_word_saving_key(self, key):
+        words_head_len = 10
         if self.substate is not self.SubState.DECIDE:
             return None
         if self.words_index >= len(self.fetched_words):
             self.substate = self.SubState.SAVE
-            prompt = strings.save_wordset_prompt(self, len(self.saved_words))
-            self.screen.replace(prompt + '\n' + pformat(self.saved_words, width=40))
+            prompt = strings.save_wordset_prompt(self, len(self.saved_words), self.saved_words[:words_head_len])
+            self.screen.replace(prompt)
             return None
         current_word = self.fetched_words[self.words_index]
         if key == self.SAVE_WORD_KEY:

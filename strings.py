@@ -22,9 +22,12 @@ def language_proficiency_prompt_short(words):
     return f"Change level with {words.PREVIOUS_KEY.name.upper()} and {words.NEXT_KEY.name.upper()}"
 
 
-def word_decision_prompt(words):
-    return f"Press {words.SAVE_WORD_KEY.name.upper()} to save, {words.DISCARD_WORD_KEY.name.upper()} to discard."
+def word_decision_prompt(words, num_left):
+    return f"""Press {words.SAVE_WORD_KEY.name.upper()} to save, {words.DISCARD_WORD_KEY.name.upper()} to discard.
+{num_left} word{'' if num_left == 1 else 's'} left"""
 
 
-def save_wordset_prompt(save, num_words):
-    return f"Press {save.SAVE_WORDSET_KEY.__str__().upper()} to save {num_words} words, {save.DISCARD_WORDSET_KEY.__str__().upper()} to discard"
+def save_wordset_prompt(save, num_words, head):
+    head_formatted = '\n'.join(['\t'+word for word in head])
+    return f"""Press {save.SAVE_WORDSET_KEY.__str__().upper()} to save {num_words} words, {save.DISCARD_WORDSET_KEY.__str__().upper()} to discard.
+The first {len(head)} words:\n\n{head_formatted}"""
