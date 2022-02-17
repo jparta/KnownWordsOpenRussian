@@ -5,7 +5,6 @@ from typing import Optional, Callable, final
 from enum import Enum, auto
 from pprint import pformat
 
-import config
 from utils import State, Screen, save_words
 import strings
 
@@ -168,5 +167,5 @@ class Words(StateEventsManager):
         if self.substate is not self.SubState.SAVE:
             return None
         if key == self.SAVE_WORDSET_KEY:
-            save_words(config.SAVE_FILE, self.saved_words)
+            save_words(self.config.SAVE_FILE, self.saved_words)
         return State.EXIT
