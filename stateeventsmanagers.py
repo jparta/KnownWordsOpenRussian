@@ -94,7 +94,7 @@ class Words(StateEventsManager):
         self.key_handlers[self.PREVIOUS_KEY] = self.handle_proficiency_selection_key
         self.key_handlers[self.SELECT_KEY] = self.handle_proficiency_selection_key
         self.key_handlers[self.SAVE_WORDSET_KEY] = self.handle_wordset_saving_key
-        self.key_handlers[self.SAVE_WORDSET_KEY] = self.handle_wordset_saving_key
+        self.key_handlers[self.DISCARD_WORDSET_KEY] = self.handle_wordset_saving_key
         self.config = config
         self.substate = self.INITIAL_SUB_STATE
         self.proficiencies_index = 0
