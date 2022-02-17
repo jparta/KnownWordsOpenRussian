@@ -102,9 +102,10 @@ class Words(StateEventsManager):
         self.fetched_words = []
         self.words_index = 0
         self.saved_words = []
+        self.give_proficiency_prompt()
 
     def _activate(self):
-        self.give_proficiency_prompt()
+        pass
 
     def send_request(self):
         self.substate = self.SubState.FETCH
