@@ -134,11 +134,13 @@ class Words(StateEventsManager):
             self.give_word_prompt()
             return None
         if key == self.NEXT_KEY:
-            if self.proficiencies_index < len(self.PROFICIENCIES) - 1:
-                self.proficiencies_index += 1
+            self.proficiencies_index += 1
+            if self.proficiencies_index >= len(self.PROFICIENCIES):
+                self.proficiencies_index = 0
         elif key == self.PREVIOUS_KEY:
-            if self.proficiencies_index > 0:
-                self.proficiencies_index -= 1
+            self.proficiencies_index -= 1
+            if self.proficiencies_index < 0:
+                self.proficiencies_index = len(self.PROFICIENCIES) - 1
         self.give_proficiency_prompt()
         return None
 
