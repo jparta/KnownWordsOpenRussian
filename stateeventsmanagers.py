@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Callable, final
 from enum import Enum, auto
 
-from utils import State, Screen, save_words
+from utils import State, Screen, async_get, words_from_response, save_words
 import strings
 
 
@@ -99,20 +99,25 @@ class Words(StateEventsManager):
         self.substate = self.INITIAL_SUB_STATE
         self.proficiencies_index = 0
         self.selected_proficiency = ''
-        self.fetched_words = ['не', 'что', 'с', 'это', 'у', 'из', 'мочь', 'человек', 'носок', 'изменить']
+        self.fetched_words = []
         self.words_index = 0
         self.saved_words = []
 
     def _activate(self):
         self.give_proficiency_prompt()
 
-    def send_request(self, proficiency):
+    def send_request(self):
         self.substate = self.SubState.FETCH
-        self.screen.replace(proficiency)
-        self.give_word_prompt()
+        params = {'level': self.selected_proficiency,
+                  'lang': self.config.LANG}
+        async_get(self.config.API_URL_BASE, callback=self.response_received, params=params)
+        prompt = strings.words_fetch_info(self.selected_proficiency)
+        self.screen.replace(prompt)
 
-    def response_received(self, response):
+    def response_received(self, resp, *args, **kwargs):
         self.substate = self.SubState.DECIDE
+        self.fetched_words = words_from_response(resp)
+        self.give_word_prompt()
 
     def give_proficiency_prompt(self, long=True):
         idx = self.proficiencies_index
@@ -128,8 +133,7 @@ class Words(StateEventsManager):
         if key == self.SELECT_KEY:
             idx = self.proficiencies_index
             self.selected_proficiency = self.PROFICIENCIES[idx]
-            self.substate = self.SubState.DECIDE
-            self.give_word_prompt()
+            self.send_request()
             return None
         if key == self.NEXT_KEY:
             self.proficiencies_index += 1

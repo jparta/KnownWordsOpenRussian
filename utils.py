@@ -1,7 +1,10 @@
+import requests
+
 from enum import Enum, auto
 import os
 import json
 from pathlib import Path
+from threading import Thread
 
 
 class Status(Enum):
@@ -46,3 +49,17 @@ def save_words(save_file, words):
         existing_words = [] if new_file else json.load(f)
         new_wordset = set(existing_words).union(set(words))
         json.dump(list(new_wordset), f)
+
+
+def async_get(*args, callback=None, **kwargs):
+    if callback:
+        kwargs['hooks'] = {'response': callback}
+    thread = Thread(target=requests.get, args=args, kwargs=kwargs)
+    thread.start()
+
+
+def words_from_response(resp):
+    data = resp.json()
+    entries = data['result']['entries']
+    words = [e['bare'] for e in entries]
+    return words

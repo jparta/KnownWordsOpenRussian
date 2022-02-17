@@ -22,6 +22,10 @@ def language_proficiency_prompt_short(words):
     return f"Change level with {words.PREVIOUS_KEY.name.upper()} and {words.NEXT_KEY.name.upper()}"
 
 
+def words_fetch_info(proficiency):
+    return f"Your words at level {proficiency} are being fetched."
+
+
 def word_decision_prompt(words, num_left):
     return f"""Press {words.SAVE_WORD_KEY.name.upper()} to save, {words.DISCARD_WORD_KEY.name.upper()} to discard.
 {num_left} word{'' if num_left == 1 else 's'} left"""
