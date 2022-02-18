@@ -108,7 +108,6 @@ class Words(StateEventsManager):
         pass
 
     def send_request(self):
-        self.substate = self.SubState.FETCH
         params = {'level': self.selected_proficiency,
                   'lang': self.config.LANG}
         async_get(self.config.API_URL_BASE, callback=self.response_received, params=params)
@@ -134,6 +133,7 @@ class Words(StateEventsManager):
         if key == self.SELECT_KEY:
             idx = self.proficiencies_index
             self.selected_proficiency = self.PROFICIENCIES[idx]
+            self.substate = self.SubState.FETCH
             self.send_request()
             return None
         if key == self.NEXT_KEY:
