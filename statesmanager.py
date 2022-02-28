@@ -35,9 +35,9 @@ class StatesManager:
             print("The requested state has not been implemented.")
             return
         old_manager = self.event_managers[self.state]
-        old_manager.deactivate()
         self.state = new_state
         new_manager = self.event_managers[self.state]
+        old_manager.deactivate()
         new_manager.activate()
 
     def handle_key(self, key: Optional[Union[Key, KeyCode]]):
