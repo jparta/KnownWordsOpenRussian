@@ -1,5 +1,3 @@
-import requests
-
 from enum import Enum, auto
 import os
 import json
@@ -63,11 +61,10 @@ def save_words(save_file, words):
         json.dump(list(new_wordset), f)
 
 
-def async_get(*args, callback=None, **kwargs):
-    if callback:
-        kwargs['hooks'] = {'response': callback}
-    thread = Thread(target=requests.get, args=args, kwargs=kwargs)
-    thread.start()
+def total_from_response(resp):
+    data = resp.json()
+    total = data['result']['total']
+    return total
 
 
 def words_from_response(resp):

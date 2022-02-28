@@ -22,8 +22,12 @@ def language_proficiency_prompt_short(words):
     return f"Change level with {words.PREVIOUS_KEY.name.upper()} and {words.NEXT_KEY.name.upper()}"
 
 
-def words_fetch_info(proficiency):
-    return f"Your words at level {proficiency} are being fetched."
+def words_fetch_info(proficiency, num_fetched=None, total_num=None):
+    if num_fetched is not None and total_num is not None:
+        progress = f"\n\n\t{num_fetched} / {total_num}"
+    else:
+        progress = ''
+    return f"""Your words at level {proficiency} are being fetched.{progress}"""
 
 
 def word_decision_prompt(words, num_left):

@@ -1,3 +1,4 @@
+import grequests
 from statesmanager import StatesManager
 from config import INITIAL_STATE
 

@@ -1,10 +1,13 @@
 from pynput.keyboard import Key, KeyCode
+import grequests
 
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, final
 from enum import Enum, auto
+import math
+from time import sleep
 
-from utils import State, Screen, async_get, words_from_response, save_words
+from utils import State, Screen, total_from_response, words_from_response, save_words
 import strings
 
 
@@ -85,6 +88,7 @@ class Words(StateEventsManager):
 
     INITIAL_SUB_STATE = SubState.PARAMS
     PROFICIENCIES = "A1 A2 B1 B2 C1 C2".split()
+    TIME_TO_SIT_ON_LAST_RESPONSE = 1.0
 
     def __init__(self, config):
         super().__init__()
@@ -100,24 +104,69 @@ class Words(StateEventsManager):
         self.proficiencies_index = 0
         self.selected_proficiency = ''
         self.fetched_words = []
+        self.requests_sent = False
         self.words_index = 0
         self.saved_words = []
+        self.response_callback = self.response_received
         self.give_proficiency_prompt()
 
     def _activate(self):
         pass
 
-    def send_request(self):
+    def send_first_request(self):
         params = {'level': self.selected_proficiency,
                   'lang': self.config.LANG}
-        async_get(self.config.API_URL_BASE, callback=self.response_received, params=params)
+        req = grequests.get(self.config.API_URL_BASE, params=params, callback=self.response_callback)
         prompt = strings.words_fetch_info(self.selected_proficiency)
         self.screen.replace(prompt)
+        req.send()
+
+    def send_request_batch(self, total_length, page_size, offset=None):
+        offset = 0 if offset is None else offset
+        num_requests = math.ceil((total_length - offset) / page_size)
+        requests_to_send = []
+        for i in range(num_requests):
+            params = {'start': offset + i * page_size,
+                      'level': self.selected_proficiency,
+                      'lang': self.config.LANG}
+            req = grequests.get(self.config.API_URL_BASE, params=params, callback=self.response_callback)
+            requests_to_send.append(req)
+        grequests.map(requests_to_send)
 
     def response_received(self, resp, *args, **kwargs):
-        self.substate = self.SubState.DECIDE
-        self.fetched_words = words_from_response(resp)
-        self.give_word_prompt()
+        if self.substate is not self.SubState.FETCH:
+            return
+        new_words = words_from_response(resp)
+        self.fetched_words.extend(new_words)
+
+        total_length = total_from_response(resp)
+        prompt = strings.words_fetch_info(self.selected_proficiency,
+                                          num_fetched=len(self.fetched_words),
+                                          total_num=total_length)
+        self.screen.replace(prompt, slow_down=True)
+        if not self.requests_sent:
+            self.requests_sent = True
+            # First response, to find out pagination variables
+            # Send the rest of the requests
+            page_size = len(new_words)
+            offset = len(new_words)
+            if len(new_words) < total_length:
+                # We need more requests
+                self.send_request_batch(total_length=total_length,
+                                        page_size=page_size,
+                                        offset=offset)
+        # State check prevents a kind of race condition where this function is being executed by two instances
+        # at the same time. The second instance to enter the function would cause the word count condition
+        # to be fulfilled, and both instances would enter the if-statement's body.
+        if self.substate is self.SubState.FETCH and \
+                len(self.fetched_words) == total_from_response(resp):
+            self.substate = self.SubState.DECIDE
+            prompt = strings.words_fetch_info(self.selected_proficiency,
+                                              num_fetched=len(self.fetched_words),
+                                              total_num=total_length)
+            self.screen.replace(prompt, slow_down=False)
+            sleep(self.TIME_TO_SIT_ON_LAST_RESPONSE)
+            self.give_word_prompt()
 
     def give_proficiency_prompt(self, long=True):
         idx = self.proficiencies_index
@@ -134,7 +183,7 @@ class Words(StateEventsManager):
             idx = self.proficiencies_index
             self.selected_proficiency = self.PROFICIENCIES[idx]
             self.substate = self.SubState.FETCH
-            self.send_request()
+            self.send_first_request()
             return None
         if key == self.NEXT_KEY:
             self.proficiencies_index += 1
