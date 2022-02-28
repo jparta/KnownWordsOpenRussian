@@ -4,7 +4,7 @@ from enum import Enum, auto
 import os
 import json
 from pathlib import Path
-from threading import Thread
+import time
 
 
 class Status(Enum):
@@ -28,19 +28,31 @@ class Screen:
     def __init__(self, in_focus):
         self.in_focus = in_focus
         self.contents = ""
+        self.slow_down_interval = 0.1
+        self.last_updated = None
 
-    def clear(self):
+    def can_update(self, slow_down):
+        if not self.in_focus():
+            return False
+        elif not slow_down or self.last_updated is None:
+            return True
+        elif slow_down:
+            elapsed = time.time() - self.last_updated
+            return elapsed >= self.slow_down_interval
+
+    def clear(self, slow_down=False):
         self.contents = ""
-        self.show()
+        self.show(slow_down)
 
-    def replace(self, new_contents):
+    def replace(self, new_contents, slow_down=False):
         self.contents = new_contents
-        self.show()
+        self.show(slow_down)
 
-    def show(self):
-        if self.in_focus():
+    def show(self, slow_down=False):
+        if self.can_update(slow_down):
             clear_screen()
             print(self.contents)
+            self.last_updated = time.time()
 
 
 def save_words(save_file, words):
