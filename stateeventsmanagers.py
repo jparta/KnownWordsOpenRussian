@@ -60,7 +60,7 @@ class Info(StateEventsManager):
     def __init__(self, config):
         super().__init__()
         self.key_handlers[self.PROCEED_KEY] = self.handle_proceed_key
-        self.INFO_STR = strings.instructions(Words, super(), self)
+        self.INFO_STR = strings.instructions(super(), self)
         self.screen.replace(self.INFO_STR)
 
     @staticmethod

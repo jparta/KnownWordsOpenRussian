@@ -1,10 +1,10 @@
-def instructions(words, supercls, info):
+def instructions(supercls, info):
     return f"""Welcome to Known Words inquirer.
 This application uses the openrussian.org API to find words you might want to learn.
 
 After selecting your level of proficiency, words will appear on the screen.
-Please press {words.SAVE_WORD_KEY.name.upper()} if you want to save the word, and {words.DISCARD_WORD_KEY.name.upper()} otherwise.
-The words you selected will be shown at the end.
+For each word, select whether to save it.
+The words you selected will be saved to a file.
 
 You may, at any time, press {supercls.MENU_KEY.name.upper()} to enter the menu, 
 where you can, for example, start a new session.
