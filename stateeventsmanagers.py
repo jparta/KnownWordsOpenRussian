@@ -1,3 +1,5 @@
+import time
+
 from pynput.keyboard import Key, KeyCode
 import grequests
 
@@ -6,6 +8,7 @@ from typing import Optional, Callable, final
 from enum import Enum, auto
 import math
 from time import sleep
+from collections import Counter
 
 from utils import State, Screen, total_from_response, words_from_response, save_words
 import strings
@@ -89,13 +92,15 @@ class Words(StateEventsManager):
     INITIAL_SUB_STATE = SubState.PARAMS
     PROFICIENCIES = "A1 A2 B1 B2 C1 C2".split()
     TIME_TO_SIT_ON_LAST_RESPONSE = 1.0
+    WORDS_HEAD_LEN = 10
+    TIME_TO_SIT_ON_WORD_DECISION = 0.2
 
     def __init__(self, config):
         super().__init__()
         self.key_handlers[self.SAVE_WORD_KEY] = self.handle_word_saving_key
         self.key_handlers[self.DISCARD_WORD_KEY] = self.handle_word_saving_key
-        self.key_handlers[self.NEXT_KEY] = self.handle_proficiency_selection_key
-        self.key_handlers[self.PREVIOUS_KEY] = self.handle_proficiency_selection_key
+        self.key_handlers[self.NEXT_KEY] = self.handle_navigation_key
+        self.key_handlers[self.PREVIOUS_KEY] = self.handle_navigation_key
         self.key_handlers[self.SELECT_KEY] = self.handle_proficiency_selection_key
         self.key_handlers[self.SAVE_WORDSET_KEY] = self.handle_wordset_saving_key
         self.key_handlers[self.DISCARD_WORDSET_KEY] = self.handle_wordset_saving_key
@@ -106,12 +111,21 @@ class Words(StateEventsManager):
         self.fetched_words = []
         self.requests_sent = False
         self.words_index = 0
-        self.saved_words = []
+        self.word_decisions = {}
         self.response_callback = self.response_received
         self.give_proficiency_prompt()
 
     def _activate(self):
         pass
+
+    def get_saved_words(self):
+        return [w for w, d in self.word_decisions.items() if d]
+
+    def saved_words_count(self):
+        return Counter(self.word_decisions.values())[True]
+
+    def undecided_words_count(self):
+        return len(self.fetched_words) - len(self.word_decisions)
 
     def send_first_request(self):
         params = {'level': self.selected_proficiency,
@@ -166,7 +180,7 @@ class Words(StateEventsManager):
                                               total_num=total_length)
             self.screen.replace(prompt, slow_down=False)
             sleep(self.TIME_TO_SIT_ON_LAST_RESPONSE)
-            self.give_word_prompt()
+            self.give_next_word_prompt(advance=False)
 
     def give_proficiency_prompt(self, long=True):
         idx = self.proficiencies_index
@@ -175,6 +189,12 @@ class Words(StateEventsManager):
         else:
             prompt = strings.language_proficiency_prompt_short(self) + '\n\n\t' + self.PROFICIENCIES[idx]
         self.screen.replace(prompt)
+
+    def handle_navigation_key(self, *args, **kwargs):
+        if self.substate is self.SubState.PARAMS:
+            return self.handle_proficiency_selection_key(*args, **kwargs)
+        elif self.substate is self.SubState.DECIDE:
+            return self.handle_words_navigation_key(*args, **kwargs)
 
     def handle_proficiency_selection_key(self, key):
         if self.substate is not self.SubState.PARAMS:
@@ -196,31 +216,58 @@ class Words(StateEventsManager):
         self.give_proficiency_prompt()
         return None
 
-    def give_word_prompt(self):
+    def give_next_word_prompt(self, advance: bool = True, dist: int = 1):
+        max_index = len(self.fetched_words) - 1
+        if advance:
+            new_index = self.words_index + dist
+            if new_index < 0:
+                new_index = 0
+            elif new_index > max_index:
+                new_index = max_index
+            self.words_index = new_index
         next_word = self.fetched_words[self.words_index]
-        words_left = len(self.fetched_words) - self.words_index
-        prompt = strings.word_decision_prompt(self, words_left) + '\n\n\t' + next_word
-        self.screen.replace(prompt)
-        self.words_index += 1
+        decision = self.word_decisions.get(next_word)
+        info_prompt = strings.word_decision_prompt(self,
+                                                   self.undecided_words_count(),
+                                                   self.words_index,
+                                                   len(self.fetched_words))
+        word_prompt = '\t' + next_word
+        decided_notice = '' if decision is None else ('\tSelected' if decision else '\tDiscarded')
+        whole_prompt = info_prompt + '\n\n' + word_prompt + '\n' + decided_notice
+        self.screen.replace(whole_prompt)
 
-    def handle_word_saving_key(self, key):
-        words_head_len = 10
+    def handle_words_navigation_key(self, key):
         if self.substate is not self.SubState.DECIDE:
             return None
-        if self.words_index >= len(self.fetched_words):
-            self.substate = self.SubState.SAVE
-            prompt = strings.save_wordset_prompt(self, len(self.saved_words), self.saved_words[:words_head_len])
-            self.screen.replace(prompt)
+        if key == self.NEXT_KEY:
+            self.give_next_word_prompt(advance=True, dist=1)
+        elif key == self.PREVIOUS_KEY:
+            self.give_next_word_prompt(advance=True, dist=-1)
+        return None
+
+    def handle_word_saving_key(self, key):
+        if self.substate is not self.SubState.DECIDE:
             return None
         current_word = self.fetched_words[self.words_index]
-        if key == self.SAVE_WORD_KEY:
-            self.saved_words.append(current_word)
-        self.give_word_prompt()
+        save = (key == self.SAVE_WORD_KEY)
+        self.word_decisions[current_word] = save
+
+        if len(self.word_decisions) >= len(self.fetched_words):
+            self.substate = self.SubState.SAVE
+            prompt = strings.save_wordset_prompt(self,
+                                                 self.saved_words_count(),
+                                                 self.get_saved_words()[:self.WORDS_HEAD_LEN])
+            self.screen.replace(prompt)
+            return None
+
+        self.give_next_word_prompt(advance=False)
+        time.sleep(self.TIME_TO_SIT_ON_WORD_DECISION)
+        self.give_next_word_prompt()
         return None
 
     def handle_wordset_saving_key(self, key):
         if self.substate is not self.SubState.SAVE:
             return None
         if key == self.SAVE_WORDSET_KEY:
-            save_words(self.config.SAVE_FILE, self.saved_words)
+            save_words(self.config.SAVE_FILE, self.get_saved_words())
         return State.EXIT

@@ -30,9 +30,15 @@ def words_fetch_info(proficiency, num_fetched=None, total_num=None):
     return f"""Your words at level {proficiency} are being fetched.{progress}"""
 
 
-def word_decision_prompt(words, num_left):
-    return f"""Press {words.SAVE_WORD_KEY.name.upper()} to save, {words.DISCARD_WORD_KEY.name.upper()} to discard.
-{num_left} word{'' if num_left == 1 else 's'} left"""
+def word_decision_prompt(words, num_left, index, total):
+    return f"""{words.SAVE_WORD_KEY.name.upper()} to save
+{words.DISCARD_WORD_KEY.name.upper()} to discard
+
+{words.PREVIOUS_KEY.name.upper()} to go to previous
+{words.NEXT_KEY.name.upper()} to go to next
+
+Word {index + 1} / {total}
+{num_left} word{'' if num_left == 1 else 's'} left to decide on"""
 
 
 def save_wordset_prompt(save, num_words, head):
