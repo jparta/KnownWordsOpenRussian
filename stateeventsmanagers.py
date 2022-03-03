@@ -182,7 +182,7 @@ class Words(StateEventsManager):
                                               total_num=total_length)
             self.screen.replace(prompt, slow_down=False)
             sleep(self.TIME_TO_SIT_ON_LAST_RESPONSE)
-            self.give_next_word_prompt(advance=False)
+            self.give_word_prompt()
 
     def give_proficiency_prompt(self, long=True):
         idx = self.proficiencies_index
@@ -218,15 +218,16 @@ class Words(StateEventsManager):
         self.give_proficiency_prompt()
         return None
 
-    def give_next_word_prompt(self, advance: bool = True, dist: int = 1):
+    def advance_word_index(self, dist: int = 1):
         max_index = len(self.fetched_words) - 1
-        if advance:
-            new_index = self.words_index + dist
-            if new_index < 0:
-                new_index = 0
-            elif new_index > max_index:
-                new_index = max_index
-            self.words_index = new_index
+        new_index = self.words_index + dist
+        if new_index < 0:
+            new_index = 0
+        elif new_index > max_index:
+            new_index = max_index
+        self.words_index = new_index
+
+    def give_word_prompt(self):
         next_word = self.fetched_words[self.words_index]
         decision = self.word_decisions.get(next_word)
         info_prompt = strings.word_decision_prompt(self,
@@ -242,9 +243,11 @@ class Words(StateEventsManager):
         if self.substate is not self.SubState.DECIDE:
             return None
         if key == self.NEXT_KEY:
-            self.give_next_word_prompt(advance=True, dist=1)
+            self.advance_word_index(dist=1)
+            self.give_word_prompt()
         elif key == self.PREVIOUS_KEY:
-            self.give_next_word_prompt(advance=True, dist=-1)
+            self.advance_word_index(dist=-1)
+            self.give_word_prompt()
         return None
 
     def handle_word_saving_key(self, key):
@@ -262,9 +265,10 @@ class Words(StateEventsManager):
             self.screen.replace(prompt)
             return None
 
-        self.give_next_word_prompt(advance=False)
+        self.give_word_prompt()
         time.sleep(self.TIME_TO_SIT_ON_WORD_DECISION)
-        self.give_next_word_prompt()
+        self.advance_word_index(dist=1)
+        self.give_word_prompt()
         return None
 
     def handle_wordset_saving_key(self, key):
