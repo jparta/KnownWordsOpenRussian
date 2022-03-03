@@ -55,6 +55,8 @@ class StateEventsManager(ABC):
     def handle_key(self, key: Key) -> Optional[State]:
         if key in self.key_handlers:
             return self.key_handlers[key](key)
+        else:
+            return None
 
 
 class Info(StateEventsManager):
